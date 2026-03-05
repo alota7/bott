@@ -207,13 +207,4 @@ def webhook_handler():
     update = request.get_json(force=True)
     bot.process_new_updates([types.Update.de_json(update)])
     return "ok", 200
-# ==========================================
-# WEBHOOK RECEIVER
-# ==========================================
-@app.route(f"/{API_TOKEN}", methods=["POST"])
-def webhook_handler():
-    update = request.get_json(force=True)
-    bot.process_new_updates([types.Update.de_json(update)])
-    return "ok", 200
 
-# The old polling is removed — webhook will receive updates
