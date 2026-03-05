@@ -192,6 +192,21 @@ def handle_admin_reply(message):
 
     bot.send_message(ADMIN_GROUP_ID, "✔ Answer sent to user!")
 
+# ————————————
+# HEALTH CHECK ROUTE (for Render)
+# ————————————
+@app.route("/healthz", methods=["GET"])
+def health_check():
+    return {"status": "ok"}, 200
+
+# ————————————
+# WEBHOOK RECEIVER
+# ————————————
+@app.route(f"/{API_TOKEN}", methods=["POST"])
+def webhook_handler():
+    update = request.get_json(force=True)
+    bot.process_new_updates([types.Update.de_json(update)])
+    return "ok", 200
 # ==========================================
 # WEBHOOK RECEIVER
 # ==========================================
