@@ -13,38 +13,46 @@ user_to_last_admin_msg = {}     # user_id → last forwarded message_id in admin
 user_questions = {}             # user_id → list of previous questions/comments
 new_users = set()               # track new users
 
+# Make sure these are defined at the top of your file (global)
+new_users = set()
+
+# Make sure these are defined at the top of your file (global)
+new_users = set()
+
 # ================================
 # START COMMAND
 # ================================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
-    
-    # Initialize user data
-    if user_id not in user_questions:
-        user_questions[user_id] = []
-    
-    # Show welcome text only for new users
+
+    # Only for new users: welcome message + one-time /start keyboard button
     if user_id not in new_users:
         new_users.add(user_id)
+        
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+        btn_start = types.KeyboardButton("/start")
+        markup.add(btn_start)
+        
         bot.send_message(
             message.chat.id,
             "👋 Welcome to HU Bible Study Section Question and Answer Bot!\n"
-            "እንኳን ወደ HU Bible Study Section የጥ�iyaቄ እና መልስ bot በደህና መጡ!"
+            "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!",
+            reply_markup=markup
         )
-    
-    # Always show the button options
-    inline = types.InlineKeyboardMarkup(row_width=1)
+
+    # Always show the inline buttons (for new and returning users)
+    inline = types.InlineKeyboardMarkup(row_width=2)   # or row_width=1 if you prefer vertical
     inline.add(
         types.InlineKeyboardButton("ጥያቄዎን ይላኩ...", callback_data="btn1"),
         types.InlineKeyboardButton("አስተያየት መስጫ...", callback_data="btn2")
     )
+    
     bot.send_message(
         message.chat.id,
-        "ከዚህ በታች አንዱን ይምረጡ 👇",
+        "ከዚህ በታች አንዱን ይምረጡ 👇",   # you can change or remove this text
         reply_markup=inline
     )
-
 # ================================
 # INLINE BUTTON CALLBACK
 # ================================
