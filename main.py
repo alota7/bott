@@ -51,7 +51,7 @@ def callback(call):
     user_id = call.from_user.id
     
     if call.data == "btn1":
-        bot.send_message(call.message.chat.id, "ጥ�iyaቄዎን ይላኩ...")
+        bot.send_message(call.message.chat.id, "ጥያቄዎን ይላኩ...")
     
     elif call.data == "btn2":
         bot.send_message(call.message.chat.id, "አስተያየትዎን ይላኩ...")
