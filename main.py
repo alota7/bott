@@ -10,7 +10,8 @@ RENDER_URL = "https://bott-2-jpt2.onrender.com"
 
 admin_to_user_map = {}          # message_id in group → user_id
 user_to_last_admin_msg = {}     # user_id → last forwarded message_id in admin group
-user_questions = {}             # user_id → list of their previous questions (text only)
+user_questions = {}             # user_id → list of previous questions/comments
+new_users = set()               # track new users
 
 # ================================
 # START COMMAND
@@ -19,17 +20,20 @@ user_questions = {}             # user_id → list of their previous questions (
 def start(message):
     user_id = message.from_user.id
     
+    # Initialize user data
     if user_id not in user_questions:
         user_questions[user_id] = []
     
-    # Welcome only once
-    if user_id not in set(user_questions.keys()):  # rough check – can improve later
+    # Show welcome text only for new users
+    if user_id not in new_users:
+        new_users.add(user_id)
         bot.send_message(
             message.chat.id,
             "👋 Welcome to HU Bible Study Section Question and Answer Bot!\n"
-            "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!"
+            "እንኳን ወደ HU Bible Study Section የጥ�iyaቄ እና መልስ bot በደህና መጡ!"
         )
     
+    # Always show the button options
     inline = types.InlineKeyboardMarkup(row_width=1)
     inline.add(
         types.InlineKeyboardButton("ጥያቄዎን ይላኩ...", callback_data="btn1"),
@@ -66,12 +70,12 @@ def forward_to_admin(message):
     name = f"@{username}" if username else message.from_user.first_name
     text = message.text if message.text else "[Media / Non-text content]"
 
-    # Save this question
+    # Save this message
     if user_id not in user_questions:
         user_questions[user_id] = []
     user_questions[user_id].append(text)
 
-    # Build message with history (last 1 or 2 previous questions)
+    # Build message with history (last 1 or 2 previous messages)
     history_part = ""
     if len(user_questions[user_id]) > 1:
         prev_questions = user_questions[user_id][:-1][-2:]  # last 2 before current
@@ -86,7 +90,7 @@ def forward_to_admin(message):
     # Send to admin group
     sent = bot.send_message(ADMIN_GROUP_ID, full_text)
     admin_to_user_map[sent.message_id] = user_id
-    user_to_last_admin_msg[user_id] = sent.message_id   # remember last message for this user
+    user_to_last_admin_msg[user_id] = sent.message_id
 
     # Confirmation to user
     bot.send_message(message.chat.id, "✅ ተልኳል!")
@@ -108,7 +112,7 @@ def admin_reply(message):
     # Confirm to admin
     bot.send_message(ADMIN_GROUP_ID, "✔ መልስ ተልኳል")
 
-    # Optional: clean up map after reply (prevents memory growth)
+    # Clean up map
     admin_to_user_map.pop(replied_msg_id, None)
 
 # ================================
