@@ -11,13 +11,7 @@ RENDER_URL = "https://bott-2-jpt2.onrender.com"
 admin_to_user_map = {}          # message_id in group → user_id
 user_to_last_admin_msg = {}     # user_id → last forwarded message_id in admin group
 user_questions = {}             # user_id → list of previous questions/comments
-new_users = set()               # track new users
-
-# Make sure these are defined at the top of your file (global)
-new_users = set()
-
-# Make sure these are defined at the top of your file (global)
-new_users = set()
+new_users = set()               # track new users (optional, kept for compatibility)
 
 # ================================
 # START COMMAND
@@ -25,34 +19,30 @@ new_users = set()
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
-
-    # Only for new users: welcome message + one-time /start keyboard button
-    if user_id not in new_users:
-        new_users.add(user_id)
-        
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-        btn_start = types.KeyboardButton("/start")
-        markup.add(btn_start)
-        
-        bot.send_message(
-            message.chat.id,
-            "👋 Welcome to HU Bible Study Section Question and Answer Bot!\n"
-            "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!",
-            reply_markup=markup
-        )
-
-    # Always show the inline buttons (for new and returning users)
-    inline = types.InlineKeyboardMarkup(row_width=2)   # or row_width=1 if you prefer vertical
+    
+    # Initialize user data for question history
+    if user_id not in user_questions:
+        user_questions[user_id] = []
+    
+    # Always show welcome message every time /start is triggered
+    bot.send_message(
+        message.chat.id,
+        "👋 Welcome to HU Bible Study Section Question and Answer Bot!\n"
+        "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!"
+    )
+    
+    # Always show the button options
+    inline = types.InlineKeyboardMarkup(row_width=1)
     inline.add(
         types.InlineKeyboardButton("ጥያቄዎን ይላኩ...", callback_data="btn1"),
         types.InlineKeyboardButton("አስተያየት መስጫ...", callback_data="btn2")
     )
-    
     bot.send_message(
         message.chat.id,
-        "ከዚህ በታች አንዱን ይምረጡ 👇",   # you can change or remove this text
+        "ከዚህ በታች አንዱን ይምረጡ 👇",
         reply_markup=inline
     )
+
 # ================================
 # INLINE BUTTON CALLBACK
 # ================================
@@ -61,7 +51,7 @@ def callback(call):
     user_id = call.from_user.id
     
     if call.data == "btn1":
-        bot.send_message(call.message.chat.id, "ጥያቄዎን ይላኩ...")
+        bot.send_message(call.message.chat.id, "ጥ�iyaቄዎን ይላኩ...")
     
     elif call.data == "btn2":
         bot.send_message(call.message.chat.id, "አስተያየትዎን ይላኩ...")
