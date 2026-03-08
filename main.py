@@ -11,7 +11,7 @@ RENDER_URL = "https://bott-2-jpt2.onrender.com"
 thread_history = {}
 admin_to_user_map = {}
 new_users = set()
-user_mode = {}   # NEW: remembers which button user clicked (question or comment)
+user_mode = {}   # remembers question or comment mode
 
 # ================================
 # START COMMAND
@@ -20,19 +20,16 @@ user_mode = {}   # NEW: remembers which button user clicked (question or comment
 def start(message):
     user_id = message.from_user.id
     
-    # === ONLY FOR NEWCOMERS ===
+    # === ONLY FOR NEWCOMERS (welcome message once) ===
     if user_id not in new_users:
         new_users.add(user_id)
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add(types.KeyboardButton("/start"))
         bot.send_message(
             message.chat.id,
             "👋 Welcome to HU Bible Study Section Question and Answer Bot!\n"
-            "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!",
-            reply_markup=markup
+            "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!"
         )
     
-    # Always show the two inline buttons
+    # === ALWAYS show the choice buttons when someone types /start or clicks Start ===
     inline = types.InlineKeyboardMarkup()
     inline.add(
         types.InlineKeyboardButton("ጥያቄዎን ይላኩ...", callback_data="btn1"),
@@ -52,19 +49,11 @@ def callback(call):
     user_id = call.from_user.id
     
     if call.data == "btn1":
-        bot.send_message(
-            call.message.chat.id,
-            "ጥያቄዎን ይላኩ...",
-            reply_markup=types.ReplyKeyboardRemove()
-        )
+        bot.send_message(call.message.chat.id, "ጥያቄዎን ይላኩ...")
         user_mode[user_id] = "question"
     
     elif call.data == "btn2":
-        bot.send_message(
-            call.message.chat.id,
-            "አስተያየትዎን ይላኩ...",
-            reply_markup=types.ReplyKeyboardRemove()
-        )
+        bot.send_message(call.message.chat.id, "አስተያየትዎን ይላኩ...")
         user_mode[user_id] = "comment"
     
     bot.answer_callback_query(call.id)
@@ -87,16 +76,12 @@ def forward_to_admin(message):
     
     # === DIFFERENT SUCCESS MESSAGE BASED ON BUTTON CLICKED ===
     if user_id in user_mode:
-        mode = user_mode.pop(user_id)                    # remove after use
+        mode = user_mode.pop(user_id)
         success_msg = "✅ Question sent!" if mode == "question" else "✅ Comment sent!"
     else:
         success_msg = "✅ Sent!"
     
-    bot.send_message(
-        message.chat.id,
-        success_msg,
-        reply_markup=types.ReplyKeyboardRemove()
-    )
+    bot.send_message(message.chat.id, success_msg)
 
 # ================================
 # ADMIN REPLY
