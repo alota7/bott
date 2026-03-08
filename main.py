@@ -8,98 +8,108 @@ app = Flask(__name__)
 
 RENDER_URL = "https://bott-2-jpt2.onrender.com"
 
-thread_history = {}
-admin_to_user_map = {}
-new_users = set()
-user_mode = {}   # question or comment mode
+admin_to_user_map = {}          # message_id in group → user_id
+user_to_last_admin_msg = {}     # user_id → last forwarded message_id in admin group
+user_questions = {}             # user_id → list of their previous questions (text only)
 
 # ================================
-# START COMMAND / Start button click
+# START COMMAND
 # ================================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
     
-    # Welcome message only once (for new users)
-    if user_id not in new_users:
-        new_users.add(user_id)
+    if user_id not in user_questions:
+        user_questions[user_id] = []
+    
+    # Welcome only once
+    if user_id not in set(user_questions.keys()):  # rough check – can improve later
         bot.send_message(
             message.chat.id,
             "👋 Welcome to HU Bible Study Section Question and Answer Bot!\n"
             "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!"
         )
     
-    # Always show the two choice buttons when /start is used
-    inline = types.InlineKeyboardMarkup(row_width=1)  # better vertical look on mobile
+    inline = types.InlineKeyboardMarkup(row_width=1)
     inline.add(
         types.InlineKeyboardButton("ጥያቄዎን ይላኩ...", callback_data="btn1"),
         types.InlineKeyboardButton("አስተያየት መስጫ...", callback_data="btn2")
     )
     bot.send_message(
         message.chat.id,
-        "ከዚህ በታች አንዱን ይምረጡ 👇",   # optional small hint text — you can remove if you want it completely empty
+        "ከዚህ በታች አንዱን ይምረጡ 👇",
         reply_markup=inline
     )
 
 # ================================
-# BUTTON CALLBACK
+# INLINE BUTTON CALLBACK
 # ================================
 @bot.callback_query_handler(func=lambda call: True)
 def callback(call):
     user_id = call.from_user.id
     
     if call.data == "btn1":
-        bot.send_message(
-            call.message.chat.id,
-            "ጥያቄዎን ይላኩ..."
-        )
-        user_mode[user_id] = "question"
+        bot.send_message(call.message.chat.id, "ጥያቄዎን ይላኩ...")
     
     elif call.data == "btn2":
-        bot.send_message(
-            call.message.chat.id,
-            "አስተያየትዎን ይላኩ..."
-        )
-        user_mode[user_id] = "comment"
+        bot.send_message(call.message.chat.id, "አስተያየትዎን ይላኩ...")
     
     bot.answer_callback_query(call.id)
 
 # ================================
-# FORWARD USER MESSAGE TO ADMIN
+# FORWARD USER MESSAGE TO ADMIN GROUP (with history)
 # ================================
 @bot.message_handler(func=lambda m: m.chat.id != ADMIN_GROUP_ID)
 def forward_to_admin(message):
     user_id = message.from_user.id
     username = message.from_user.username
     name = f"@{username}" if username else message.from_user.first_name
-    text = message.text if message.text else "[Media]"
-    
-    sent = bot.send_message(
-        ADMIN_GROUP_ID,
-        f"📩 From {name}\n\n{text}"
+    text = message.text if message.text else "[Media / Non-text content]"
+
+    # Save this question
+    if user_id not in user_questions:
+        user_questions[user_id] = []
+    user_questions[user_id].append(text)
+
+    # Build message with history (last 1 or 2 previous questions)
+    history_part = ""
+    if len(user_questions[user_id]) > 1:
+        prev_questions = user_questions[user_id][:-1][-2:]  # last 2 before current
+        history_part = "🗨 Previous:\n" + "\n".join([f"• {q}" for q in prev_questions]) + "\n\n"
+
+    full_text = (
+        f"📩 From {name} (ID: {user_id})\n"
+        f"{history_part}"
+        f"New message:\n{text}"
     )
+
+    # Send to admin group
+    sent = bot.send_message(ADMIN_GROUP_ID, full_text)
     admin_to_user_map[sent.message_id] = user_id
-    
-    # Success message depending on mode
-    if user_id in user_mode:
-        mode = user_mode.pop(user_id)
-        success = "✅ ጥያቄዎ ተልኳል!" if mode == "question" else "✅ አስተያየትዎ ተልኳል!"
-    else:
-        success = "✅ ተልኳል!"
-    
-    bot.send_message(message.chat.id, success)
+    user_to_last_admin_msg[user_id] = sent.message_id   # remember last message for this user
+
+    # Confirmation to user
+    bot.send_message(message.chat.id, "✅ ተልኳል!")
 
 # ================================
-# ADMIN REPLIES TO USER
+# ADMIN REPLIES → SEND TO USER
 # ================================
 @bot.message_handler(func=lambda m: m.chat.id == ADMIN_GROUP_ID and m.reply_to_message)
 def admin_reply(message):
-    replied = message.reply_to_message.message_id
-    user_id = admin_to_user_map.get(replied)
+    replied_msg_id = message.reply_to_message.message_id
+    user_id = admin_to_user_map.get(replied_msg_id)
+    
     if not user_id:
         return
+
+    # Send answer to user
     bot.send_message(user_id, f"💬 መልስ:\n{message.text}")
+
+    # Confirm to admin
     bot.send_message(ADMIN_GROUP_ID, "✔ መልስ ተልኳል")
+
+    # Optional: clean up map after reply (prevents memory growth)
+    admin_to_user_map.pop(replied_msg_id, None)
 
 # ================================
 # WEBHOOK & SERVER
