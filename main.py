@@ -43,6 +43,7 @@ def start(message):
         reply_markup=inline
     )
 
+
 # ================================
 # INLINE BUTTON CALLBACK
 # ================================
@@ -59,6 +60,18 @@ def callback(call):
     bot.answer_callback_query(call.id)
 
 # ================================
+# SHOW MESSAGE WITH INLINE BUTTONS
+# ================================
+@bot.message_handler(func=lambda m: True)
+def show_message(message):
+    inline = types.InlineKeyboardMarkup(row_width=2)
+    inline.add(
+        types.InlineKeyboardButton("ጥያቄዎን", callback_data="btn1"),
+        types.InlineKeyboardButton("አስተያየት", callback_data="btn2")
+    )
+    bot.send_message(message.chat.id, "Choose an option:", reply_markup=inline)
+
+# ================================
 # FORWARD USER MESSAGE TO ADMIN GROUP (with history)
 # ================================
 @bot.message_handler(func=lambda m: m.chat.id != ADMIN_GROUP_ID)
@@ -66,34 +79,42 @@ def forward_to_admin(message):
     user_id = message.from_user.id
     username = message.from_user.username
     name = f"@{username}" if username else message.from_user.first_name
-    text = message.text if message.text else "[Media / Non-text content]"
-
+    
     # Save this message
     if user_id not in user_questions:
         user_questions[user_id] = []
-    user_questions[user_id].append(text)
-
+    user_questions[user_id].append(message.text if message.text else "No text content")
+    
+    # Check if the user has already answered this question
+    if user_id in admin_to_user_map:
+        # User has already answered this question, skip forwarding to admin group
+        return
+    
     # Build message with history (last 1 or 2 previous messages)
     history_part = ""
     if len(user_questions[user_id]) > 1:
-        prev_questions = user_questions[user_id][:-1][-2:]  # last 2 before current
+        prev_questions = user_questions[user_id][-2:]  # last 2 before current
         history_part = "🗨 Previous:\n" + "\n".join([f"• {q}" for q in prev_questions]) + "\n\n"
-
-    full_text = (
-        f"📩 From {name} (ID: {user_id})\n"
-        f"{history_part}"
-        f"New message:\n{text}"
-    )
-
-    # Send to admin group
-    sent = bot.send_message(ADMIN_GROUP_ID, full_text)
-    admin_to_user_map[sent.message_id] = user_id
-    user_to_last_admin_msg[user_id] = sent.message_id
+    
+    # Relay the message to the admin group
+    if message.content_type == 'audio':
+        bot.send_audio(ADMIN_GROUP_ID, message.audio.file_id, caption=f"📩 From {name} (ID: {user_id})\n{history_part}")
+    elif message.content_type == 'voice':
+        bot.send_voice(ADMIN_GROUP_ID, message.voice.file_id, caption=f"📩 From {name} (ID: {user_id})\n{history_part}")
+    elif message.content_type == 'document':
+        bot.send_document(ADMIN_GROUP_ID, message.document.file_id, caption=f"📩 From {name} (ID: {user_id})\n{history_part}")
+    elif message.content_type == 'photo':
+        bot.send_photo(ADMIN_GROUP_ID, message.photo[-1].file_id, caption=f"📩 From {name} (ID: {user_id})\n{history_part}")
+    elif message.content_type == 'text':
+        bot.send_message(ADMIN_GROUP_ID, f"📩 From {name} (ID: {user_id})\n{history_part}\n{text}")
+    elif message.content_type == 'link':
+        bot.send_message(ADMIN_GROUP_ID, f"📩 From {name} (ID: {user_id})\n{history_part}\nLink: {message.text}")
+    else:
+        bot.send_message(ADMIN_GROUP_ID, f"📩 From {name} (ID: {user_id})\n{history_part}\n[Media / Non-text content]")
 
     # Confirmation to user
     bot.send_message(message.chat.id, "✅ ተልኳል!")
-
-# ================================
+    # ================================
 # ADMIN REPLIES → SEND TO USER
 # ================================
 @bot.message_handler(func=lambda m: m.chat.id == ADMIN_GROUP_ID and m.reply_to_message)
@@ -105,14 +126,29 @@ def admin_reply(message):
         return
 
     # Send answer to user
-    bot.send_message(user_id, f"💬 መልስ:\n{message.text}")
+    if message.content_type == 'audio':
+        bot.send_audio(user_id, message.audio.file_id, caption=message.text)
+    elif message.content_type == 'voice':
+        bot.send_voice(user_id, message.voice.file_id, caption=message.text)
+    elif message.content_type == 'document':
+        if message.document.file_size > 20000000:  # Check file size limit
+            bot.send_message(ADMIN_GROUP_ID, "🚫 File too large. Please use a link instead.")
+            return
+        bot.send_document(user_id, message.document.file_id, caption=message.text)
+    elif message.content_type == 'photo':
+        bot.send_photo(user_id, message.photo[-1].file_id, caption=message.text)
+    elif message.content_type == 'text':
+        bot.send_message(user_id, message.text)
+    elif message.content_type == 'link':
+        bot.send_message(user_id, message.text)
+    else:
+        bot.send_message(ADMIN_GROUP_ID, "🚫 Unsupported content type.")
 
     # Confirm to admin
     bot.send_message(ADMIN_GROUP_ID, "✔ መልስ ተልኳል")
 
     # Clean up map
     admin_to_user_map.pop(replied_msg_id, None)
-
 # ================================
 # WEBHOOK & SERVER
 # ================================
