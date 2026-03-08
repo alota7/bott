@@ -11,16 +11,16 @@ RENDER_URL = "https://bott-2-jpt2.onrender.com"
 thread_history = {}
 admin_to_user_map = {}
 new_users = set()
-user_mode = {}   # remembers question or comment mode
+user_mode = {}   # question or comment mode
 
 # ================================
-# START COMMAND
+# START COMMAND / Start button click
 # ================================
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
     
-    # === ONLY FOR NEWCOMERS (welcome message once) ===
+    # Welcome message only once (for new users)
     if user_id not in new_users:
         new_users.add(user_id)
         bot.send_message(
@@ -29,15 +29,15 @@ def start(message):
             "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!"
         )
     
-    # === ALWAYS show the choice buttons when someone types /start or clicks Start ===
-    inline = types.InlineKeyboardMarkup()
+    # Always show the two choice buttons when /start is used
+    inline = types.InlineKeyboardMarkup(row_width=1)  # better vertical look on mobile
     inline.add(
         types.InlineKeyboardButton("ጥያቄዎን ይላኩ...", callback_data="btn1"),
         types.InlineKeyboardButton("አስተያየት መስጫ...", callback_data="btn2")
     )
     bot.send_message(
         message.chat.id,
-        "",                     
+        "ከዚህ በታች አንዱን ይምረጡ 👇",   # optional small hint text — you can remove if you want it completely empty
         reply_markup=inline
     )
 
@@ -49,17 +49,23 @@ def callback(call):
     user_id = call.from_user.id
     
     if call.data == "btn1":
-        bot.send_message(call.message.chat.id, "ጥያቄዎን ይላኩ...")
+        bot.send_message(
+            call.message.chat.id,
+            "ጥያቄዎን ይላኩ..."
+        )
         user_mode[user_id] = "question"
     
     elif call.data == "btn2":
-        bot.send_message(call.message.chat.id, "አስተያየትዎን ይላኩ...")
+        bot.send_message(
+            call.message.chat.id,
+            "አስተያየትዎን ይላኩ..."
+        )
         user_mode[user_id] = "comment"
     
     bot.answer_callback_query(call.id)
 
 # ================================
-# USER MESSAGE → ADMIN
+# FORWARD USER MESSAGE TO ADMIN
 # ================================
 @bot.message_handler(func=lambda m: m.chat.id != ADMIN_GROUP_ID)
 def forward_to_admin(message):
@@ -74,17 +80,17 @@ def forward_to_admin(message):
     )
     admin_to_user_map[sent.message_id] = user_id
     
-    # === DIFFERENT SUCCESS MESSAGE BASED ON BUTTON CLICKED ===
+    # Success message depending on mode
     if user_id in user_mode:
         mode = user_mode.pop(user_id)
-        success_msg = "✅ Question sent!" if mode == "question" else "✅ Comment sent!"
+        success = "✅ ጥያቄዎ ተልኳል!" if mode == "question" else "✅ አስተያየትዎ ተልኳል!"
     else:
-        success_msg = "✅ Sent!"
+        success = "✅ ተልኳል!"
     
-    bot.send_message(message.chat.id, success_msg)
+    bot.send_message(message.chat.id, success)
 
 # ================================
-# ADMIN REPLY
+# ADMIN REPLIES TO USER
 # ================================
 @bot.message_handler(func=lambda m: m.chat.id == ADMIN_GROUP_ID and m.reply_to_message)
 def admin_reply(message):
@@ -92,11 +98,11 @@ def admin_reply(message):
     user_id = admin_to_user_map.get(replied)
     if not user_id:
         return
-    bot.send_message(user_id, f"💬 Answer:\n{message.text}")
-    bot.send_message(ADMIN_GROUP_ID, "✔ Answer sent")
+    bot.send_message(user_id, f"💬 መልስ:\n{message.text}")
+    bot.send_message(ADMIN_GROUP_ID, "✔ መልስ ተልኳል")
 
 # ================================
-# HEALTH CHECK + WEBHOOK + SERVER
+# WEBHOOK & SERVER
 # ================================
 @app.route("/healthz")
 def health():
