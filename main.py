@@ -33,7 +33,7 @@ def start(message):
     )
     bot.send_message(
         message.chat.id,
-        "ከዚህ በታች አንዱን ይምረጡ 👇",
+       "ጥያቄዎን ወይም አስተያየትዎን ለመላክ፣ ከታች አንዱን አማራጭ ይምረጡ 👇",
         reply_markup=inline
     )
 
