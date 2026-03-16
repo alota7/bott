@@ -23,8 +23,7 @@ thread_history = {}          # user_id → list of messages for history
 def start(message):
     bot.send_message(
         message.chat.id,
-        "👋 Welcome to HU Bible Study Section Question and Answer Bot!\n"
-        "እንኳን ወደ HU Bible Study Section የጥያቄ እና መልስ bot በደህና መጡ!"
+        "እንኳን ወደ HU Bible Study Section የጥያቄ መጠየቅያ BOT በደህና መጡ!"
     )
 
     inline = types.InlineKeyboardMarkup()
@@ -127,7 +126,7 @@ def forward_to_admin(message):
     admin_to_user_map[sent.message_id] = user_id
     user_to_admin_map[message.message_id] = sent.message_id
 
-    bot.send_message(message.chat.id, "✅ ጥያቄዎ ተልኳል።\nYour question has been sent!\nWait for the Answer...")
+    bot.send_message(message.chat.id, "✅በተሳካ ሁኔታ ተልኳል። እናመሰግናለን!! )
 
 # ==========================================
 # ADMIN REPLY HANDLER
