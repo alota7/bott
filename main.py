@@ -126,7 +126,7 @@ def forward_to_admin(message):
     admin_to_user_map[sent.message_id] = user_id
     user_to_admin_map[message.message_id] = sent.message_id
 
-    bot.send_message(message.chat.id, "✅በተሳካ ሁኔታ ተልኳል። እናመሰግናለን!! )
+    bot.send_message(message.chat.id, "✅በተሳካ ሁኔታ ተልኳል። እናመሰግናለን!!")
 
 # ==========================================
 # ADMIN REPLY HANDLER
